@@ -1,0 +1,336 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider                         = "zod-prisma-types"
+  createInputTypes                 = false
+  createOptionalDefaultValuesTypes = true
+  writeNullishInModelTypes         = true
+}
+
+datasource db {
+  provider  = "postgres"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  id                   String                 @id @unique @default(dbgenerated("auth.uid()")) @db.Uuid
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  first_name           String
+  last_name            String
+  email                String
+  province             String?
+  cell_number          String?
+  role                 Role                   @default(Youth)
+  gender               Gender
+  status               Status                 @default(Pending)
+  company_manager      company_manager[]
+  vacancy              vacancy[]
+  company              company[]
+  resume               resume[]
+  vacancy_applications vacancy_applications[]
+  transactions         transactions[]
+  invites              invite[]
+  sponsor              String?                @db.Uuid
+}
+
+// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+
+model resume {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user                 profiles               @relation(fields: [user_id], references: [id])
+  user_id              String                 @default(dbgenerated("auth.uid()")) @db.Uuid
+  name                 String
+  description          String                 @db.VarChar
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  available            Boolean                @default(false)
+  url                  String?
+  type                 ResumeType
+  vacancy_applications vacancy_applications[]
+  personal_details     personal_details?
+  career_objectives    career_objectives?
+  references           references[]
+  cover_letter         cover_letter?
+  contact_info         contact_info?
+  work_experience      work_experience[]
+  education_details    education_details[]
+}
+
+model points {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company    company @relation(references: [id], fields: [company_id])
+  company_id String  @unique @db.Uuid
+  balance    Int     @default(0)
+}
+
+model transactions {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company    company  @relation(references: [id], fields: [company_id])
+  company_id String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  user       profiles @relation(fields: [user_id], references: [id])
+  user_id    String   @default(dbgenerated("auth.uid()")) @db.Uuid
+  amount     Int
+  token      String?
+}
+
+model personal_details {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user          String  @default(dbgenerated("auth.uid()")) @db.Uuid
+  first_name    String
+  last_name     String
+  gender        Gender
+  home_language String
+  country       String
+  address       String?
+  resume        resume? @relation(fields: [resume_id], references: [id])
+  resume_id     String? @unique @db.Uuid
+}
+
+model education_details {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user           String          @default(dbgenerated("auth.uid()")) @db.Uuid
+  title          String
+  details        String          @db.VarChar
+  status         EducationStatus
+  year_started   String?
+  year_completed String?
+  resume         resume?         @relation(fields: [resume_id], references: [id])
+  resume_id      String?         @db.Uuid
+}
+
+model work_experience {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user               String   @default(dbgenerated("auth.uid()")) @db.Uuid
+  company            String
+  date               String
+  date_ended         String?
+  current_job        Boolean?
+  position           String
+  reason_for_leaving String?
+  resume             resume?  @relation(fields: [resume_id], references: [id])
+  resume_id          String?  @db.Uuid
+}
+
+model contact_info {
+  id                       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user                     String  @default(dbgenerated("auth.uid()")) @db.Uuid
+  email                    String
+  cell_number              String
+  tel_number               String?
+  next_of_kin_name         String?
+  next_of_kin_cell         String?
+  next_of_kin_relationship String?
+  resume                   resume? @relation(fields: [resume_id], references: [id])
+  resume_id                String? @unique @db.Uuid
+}
+
+model career_objectives {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user       String  @default(dbgenerated("auth.uid()")) @db.Uuid
+  objectives String
+  resume     resume? @relation(fields: [resume_id], references: [id])
+  resume_id  String? @unique @db.Uuid
+}
+
+model references {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user        String  @default(dbgenerated("auth.uid()")) @db.Uuid
+  name        String
+  cell_number String?
+  email       String?
+  institution String
+  resume      resume? @relation(fields: [resume_id], references: [id])
+  resume_id   String? @db.Uuid
+}
+
+model cover_letter {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user      String  @default(dbgenerated("auth.uid()")) @db.Uuid
+  letter    String
+  resume    resume? @relation(fields: [resume_id], references: [id])
+  resume_id String? @unique @db.Uuid
+}
+
+model company {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user            profiles          @relation(fields: [user_id], references: [id])
+  user_id         String            @default(dbgenerated("auth.uid()")) @db.Uuid
+  name            String
+  status          Status            @default(Pending)
+  address         String
+  description     String            @db.VarChar
+  reg_no          String
+  department      String
+  employees       String
+  type            CompanyType
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  regCertificate  String?
+  company_manager company_manager[]
+  vacancies       vacancy[]
+  points          points?
+  transactions    transactions[]
+  invites         invite[]
+  token           token[]
+}
+
+model vacancy {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user           profiles               @relation(fields: [user_id], references: [id])
+  user_id        String                 @default(dbgenerated("auth.uid()")) @db.Uuid
+  company        company                @relation(references: [id], fields: [company_id])
+  company_id     String                 @db.Uuid
+  status         Status                 @default(Pending)
+  title          String
+  description    String                 @db.VarChar
+  slots          String?
+  location       String
+  monthly_salary String?
+  close_date     DateTime
+  created_at     DateTime               @default(now()) @db.Timestamptz(6)
+  type           JobType                @default(Contract)
+  remote         Boolean
+  applications   vacancy_applications[]
+  interview      interview[]
+  views          Int                    @default(0)
+}
+
+model vacancy_applications {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user       profiles          @relation(fields: [user_id], references: [id])
+  user_id    String            @default(dbgenerated("auth.uid()")) @db.Uuid
+  vacancy    vacancy           @relation(references: [id], fields: [vacancy_id])
+  vacancy_id String            @db.Uuid
+  resume     resume            @relation(references: [id], fields: [resume_id])
+  resume_id  String            @db.Uuid
+  status     ApplicationStatus @default(Pending)
+  created_at DateTime          @default(now()) @db.Timestamptz(6)
+  interview  interview[]
+}
+
+model company_manager {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  company    company  @relation(fields: [company_id], references: [id])
+  company_id String   @db.Uuid
+  user       profiles @relation(fields: [user_id], references: [id])
+  user_id    String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model interview {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vacancy        vacancy              @relation(references: [id], fields: [vacancy_id])
+  vacancy_id     String               @db.Uuid
+  application    vacancy_applications @relation(fields: [application_id], references: [id])
+  application_id String               @db.Uuid
+  date           DateTime
+  time           String?
+  type           InterviewType        @default(Physical)
+  location       String?
+  meeting_link   String?
+  description    String?
+}
+
+model point_tiers {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cost       String
+  points     String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  token      token[]
+}
+
+model payment_settings {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vacancy_cost   String @default("5")
+  candidate_cost String @default("5")
+  interview_cost String @default("5")
+  search_cost    String @default("1")
+  invite_cost    String @default("1")
+}
+
+model invite {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user       profiles @relation(fields: [user_id], references: [id])
+  user_id    String   @default(dbgenerated("auth.uid()")) @db.Uuid
+  name       String
+  email      String
+  code       String
+  message    String?
+  company    company  @relation(fields: [company_id], references: [id])
+  company_id String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+// prisma/schema.prisma
+model token {
+  id            String       @id @default(cuid())
+  token         String       @unique
+  user_id       String
+  company_id    String       @db.Uuid
+  company       company      @relation(fields: [company_id], references: [id])
+  created_at    DateTime     @default(now())
+  used          Boolean      @default(false)
+  point_tiers   point_tiers? @relation(fields: [point_tiersId], references: [id])
+  point_tiersId String?      @db.Uuid
+}
+
+enum Gender {
+  Male
+  Female
+  NonBinary
+  Other
+}
+
+enum InterviewType {
+  Online
+  Physical
+}
+
+enum Role {
+  Admin
+  Youth
+  Sponsor
+  Employer
+}
+
+enum EducationStatus {
+  Completed
+  Active
+  NotCompleted
+}
+
+enum ResumeType {
+  File
+  Custom
+}
+
+enum CompanyType {
+  Private
+  Public
+  Organisation
+}
+
+enum JobType {
+  Contract
+  Permanent
+  Temporary
+}
+
+enum ApplicationStatus {
+  Pending
+  Rejected
+  ShortListed
+  Interview
+  Hired
+}
+
+enum Status {
+  Approved
+  Pending
+  Rejected
+}
